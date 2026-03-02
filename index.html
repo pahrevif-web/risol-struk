@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Struk</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 16px; }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    .grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; }
+    label { display: block; font-size: 12px; color: #444; margin-bottom: 6px; }
+    input, button { font-size: 14px; padding: 10px; border-radius: 10px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
+    button { cursor: pointer; border: none; }
+    .btn { background: #111; color: #fff; }
+    .btn2 { background: #f2f2f2; }
+    .row { display: grid; grid-template-columns: 1fr 90px; gap: 10px; align-items: center; }
+    .menu-row { display: grid; grid-template-columns: 1fr 100px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed #ddd; }
+    .menu-row:last-child { border-bottom: none; }
+    .muted { color: #666; font-size: 12px; }
+    .top-actions { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+
+    /* Banner peringatan iPhone preview */
+    .banner {
+      display: none;
+      border: 1px solid #f0c36d;
+      background: #fff7e6;
+      color: #5a3b00;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      line-height: 1.35;
+    }
+    .banner b { display: block; margin-bottom: 6px; }
+    .banner .actions { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; margin-top: 10px; }
+    .banner button { border: 1px solid #d9b25f; background: #fff; }
+    .banner .primary { background: #111; color: #fff; border: none; }
+
+    /* AREA STRUK (tampilan thermal 80mm) */
+    #receipt-wrap { display: flex; justify-content: center; }
+    #receipt {
+      width: 80mm;
+      border: 1px dashed #bbb;
+      border-radius: 10px;
+      padding: 10px;
+      background: #fff;
+      color: #000;
+      font-size: 12px;
+    }
+    #receipt .center { text-align: center; }
+    #receipt .hr { border-top: 1px dashed #000; margin: 8px 0; }
+    #receipt table { width: 100%; border-collapse: collapse; }
+    #receipt td { padding: 2px 0; vertical-align: top; }
+    #receipt td:nth-child(1) { width: 46%; }
+    #receipt td:nth-child(2) { width: 14%; text-align: right; }
+    #receipt td:nth-child(3) { width: 20%; text-align: right; }
+    #receipt td:nth-child(4) { width: 20%; text-align: right; }
+    #receipt .tot td:first-child { text-align: left; }
+    #receipt .tot td:last-child { text-align: right; }
+    #receipt .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    /* ==== PRINT SETTINGS ==== */
+    @page { size: 80mm auto; margin: 0; }
+    @media print {
+      body { margin: 0; }
+      .no-print { display: none !important; }
+      #receipt-wrap { justify-content: flex-start; }
+      #receipt { border: none; border-radius: 0; padding: 6mm; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Banner iPhone preview -->
+  <div id="iosBanner" class="banner">
+    <b>iPhone: ini terbuka di “Preview File”, bukan Safari.</b>
+    Di mode preview, JavaScript & Print sering tidak berjalan normal, jadi struk bisa kosong/aneh.<br><br>
+    Solusi:
+    <ol style="margin: 8px 0 0 18px;">
+      <li>Tap ikon <b>Share</b> (kotak panah ke atas)</li>
+      <li>Pilih <b>Open in Safari / Buka di Safari</b></li>
+    </ol>
+
+    <div class="actions">
+      <button id="btnCopyUrl" type="button">Copy URL</button>
+      <button id="btnHow" class="primary" type="button">Cara cepat di iPhone</button>
+    </div>
+
+    <div id="howBox" class="muted" style="display:none; margin-top:10px;">
+      Jika tidak ada “Open in Safari”: di Share Sheet pilih <b>Copy</b>, lalu buka Safari dan paste.
+      Paling stabil: upload file jadi link (GitHub Pages/Netlify).
+    </div>
+  </div>
+
+  <h1 class="no-print">Struk • Print → Save as PDF (auto panjang)</h1>
+
+  <div class="grid">
+    <div class="card no-print">
+      <div class="row">
+        <div>
+          <label>Nama Toko</label>
+          <input id="storeName" value="RISOL IBU KIA" />
+        </div>
+        <div>
+          <label>Pajak (%)</label>
+          <input id="taxRate" type="number" min="0" value="0" />
+        </div>
+      </div>
+
+      <div style="height:10px"></div>
+
+      <label>Nama Pembeli</label>
+      <input id="buyerName" placeholder="Contoh: Farhan" />
+
+      <div style="height:10px"></div>
+
+      <label>Daftar Menu (isi qty)</label>
+      <div id="menuList"></div>
+
+      <div style="height:12px"></div>
+
+      <div class="top-actions">
+        <button class="btn2" id="btnReset" type="button">Reset Qty</button>
+        <button class="btn" id="btnPrint" type="button">Cetak / Save PDF</button>
+      </div>
+
+      <div style="margin-top:10px" class="muted">
+        iPhone: pastikan buka di <b>Safari</b> (bukan preview file). Jika ada opsi, aktifkan <b>Scale: 100%</b> / nonaktifkan “Fit to page”.
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="receipt-wrap">
+        <div id="receipt"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== Data menu (ubah sesuai kebutuhan) ======
+    const MENU = [
+        { id: "M01", name: "Mayo", price: 3000 },
+      { id: "M02", name: "Ayam Suwir", price: 3000 },
+      { id: "M03", name: "Mentai", price: 3000 },
+      { id: "M04", name: "Beef Blackpepper", price: 4000 },
+	  { id: "M05", name: "Sosis Bolognese", price: 4000 }
+    ];
+
+    const qtyById = Object.fromEntries(MENU.map(m => [m.id, 0]));
+
+    const elMenuList = document.getElementById("menuList");
+    const elReceipt = document.getElementById("receipt");
+    const elStoreName = document.getElementById("storeName");
+    const elTaxRate = document.getElementById("taxRate");
+    const elBuyerName = document.getElementById("buyerName");
+
+    // Receipt number dikunci saat klik print
+    let currentReceiptNo = "RSL-" + Date.now();
+
+    function rupiah(n) { return new Intl.NumberFormat("id-ID").format(n); }
+    function nowJakartaStr() { return new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }); }
+
+    function safeFilePart(s) {
+      return String(s || "")
+        .trim()
+        .replace(/[\\/:*?"<>|]+/g, "-")
+        .replace(/\s+/g, "_")
+        .slice(0, 50);
+    }
+
+    function setDynamicTitle({ buyerName, receiptNo }) {
+      const buyer = safeFilePart(buyerName) || "Pembeli";
+      const no = safeFilePart(receiptNo);
+      document.title = `Struk_${buyer}_${no}`;
+    }
+
+    function renderMenuInputs() {
+      elMenuList.innerHTML = "";
+      MENU.forEach(m => {
+        const row = document.createElement("div");
+        row.className = "menu-row";
+        row.innerHTML = `
+          <div>
+            <div><b>${m.name}</b></div>
+            <div class="muted">Rp ${rupiah(m.price)}</div>
+          </div>
+          <div>
+            <input data-id="${m.id}" type="number" min="0" value="${qtyById[m.id]}" />
+          </div>
+        `;
+        elMenuList.appendChild(row);
+      });
+
+      elMenuList.querySelectorAll("input[data-id]").forEach(inp => {
+        inp.addEventListener("input", (e) => {
+          const id = e.target.getAttribute("data-id");
+          const v = Number(e.target.value || 0);
+          qtyById[id] = Number.isFinite(v) && v >= 0 ? v : 0;
+          renderReceipt();
+        });
+      });
+    }
+
+    function calc() {
+      const items = MENU
+        .map(m => {
+          const qty = Number(qtyById[m.id] || 0);
+          return { ...m, qty, amount: m.price * qty };
+        })
+        .filter(x => x.qty > 0);
+
+      const subtotal = items.reduce((a, b) => a + b.amount, 0);
+      const taxRate = Number(elTaxRate.value || 0);
+      const tax = Math.round(subtotal * taxRate / 100);
+      const total = subtotal + tax;
+
+      return { items, subtotal, taxRate, tax, total };
+    }
+
+    function renderReceipt() {
+      const storeName = elStoreName.value || "TOKO";
+      const buyerName = (elBuyerName.value || "").trim();
+      const t = calc();
+
+      setDynamicTitle({ buyerName, receiptNo: currentReceiptNo });
+
+      const rows = t.items.length
+        ? t.items.map(it => `
+            <tr>
+              <td>${it.name}</td>
+              <td>${it.qty}x</td>
+              <td>${rupiah(it.price)}</td>
+              <td>${rupiah(it.amount)}</td>
+            </tr>
+          `).join("")
+        : `<tr><td colspan="4" class="muted">Belum ada item dipilih.</td></tr>`;
+
+      elReceipt.innerHTML = `
+        <div class="center">
+          <div><b>${storeName}</b></div>
+          <div class="muted" style="font-size:11px">Struk internal</div>
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="mono" style="font-size:11px">
+          <div>No: ${currentReceiptNo}</div>
+          <div>Tgl: ${nowJakartaStr()}</div>
+          ${buyerName ? `<div>Pembeli: ${buyerName}</div>` : ``}
+        </div>
+
+        <div class="hr"></div>
+
+        <table>${rows}</table>
+
+        <div class="hr"></div>
+
+        <table class="tot">
+          <tr><td>Subtotal</td><td>Rp ${rupiah(t.subtotal)}</td></tr>
+          <tr><td>Pajak (${t.taxRate}%)</td><td>Rp ${rupiah(t.tax)}</td></tr>
+          <tr><td><b>Total</b></td><td><b>Rp ${rupiah(t.total)}</b></td></tr>
+        </table>
+
+        <div class="hr"></div>
+
+        <div class="center" style="font-size:11px">Terima kasih 🙏</div>
+      `;
+    }
+
+    // ===== Banner logic =====
+    function detectIOSPreviewAndShowBanner() {
+      const ua = navigator.userAgent || "";
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+      // Safari iOS biasanya ada "Safari" dan tidak ada "CriOS" (Chrome iOS) / "FxiOS" (Firefox iOS)
+      // Tapi yang kita cari: file dibuka via "file://" atau viewer — seringnya location.protocol === "file:"
+      const isFileProtocol = location.protocol === "file:";
+
+      // Best-effort: kalau iOS + file://, besar kemungkinan dibuka dari Files preview / local file
+      if (isIOS && isFileProtocol) {
+        document.getElementById("iosBanner").style.display = "block";
+      }
+    }
+
+    document.getElementById("btnReset").addEventListener("click", () => {
+      Object.keys(qtyById).forEach(k => qtyById[k] = 0);
+      currentReceiptNo = "RSL-" + Date.now();
+      renderMenuInputs();
+      renderReceipt();
+    });
+
+    document.getElementById("btnPrint").addEventListener("click", () => {
+      currentReceiptNo = "RSL-" + Date.now();
+      renderReceipt();
+      window.print();
+    });
+
+    // Banner actions
+    document.getElementById("btnCopyUrl").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(location.href);
+        alert("URL sudah dicopy. Buka Safari lalu paste di address bar.");
+      } catch {
+        // fallback
+        const tmp = document.createElement("textarea");
+        tmp.value = location.href;
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand("copy");
+        document.body.removeChild(tmp);
+        alert("URL sudah dicopy. Buka Safari lalu paste di address bar.");
+      }
+    });
+
+    document.getElementById("btnHow").addEventListener("click", () => {
+      const box = document.getElementById("howBox");
+      box.style.display = (box.style.display === "none") ? "block" : "none";
+    });
+
+    // live update
+    elBuyerName.addEventListener("input", renderReceipt);
+    elStoreName.addEventListener("input", renderReceipt);
+    elTaxRate.addEventListener("input", renderReceipt);
+
+    // init
+    renderMenuInputs();
+    renderReceipt();
+    detectIOSPreviewAndShowBanner();
+  </script>
+</body>
+</html>
